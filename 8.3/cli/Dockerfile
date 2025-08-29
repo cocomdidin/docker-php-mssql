@@ -1,4 +1,4 @@
-FROM php:8.0-cli-buster
+FROM php:8.3-cli
 
 ENV ACCEPT_EULA=Y
 
@@ -8,10 +8,17 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Install prerequisites for the sqlsrv and pdo_sqlsrv PHP extensions.
+# Some packages are pinned with lower priority to prevent build issues due to package conflicts.
+# Link: https://github.com/microsoft/linux-package-repositories/issues/39
 RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
-    && curl https://packages.microsoft.com/config/debian/10/prod.list > /etc/apt/sources.list.d/mssql-release.list \
+    && curl https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list \
+    && echo "Package: unixodbc\nPin: origin \"packages.microsoft.com\"\nPin-Priority: 100\n" >> /etc/apt/preferences.d/microsoft \
+    && echo "Package: unixodbc-dev\nPin: origin \"packages.microsoft.com\"\nPin-Priority: 100\n" >> /etc/apt/preferences.d/microsoft \
+    && echo "Package: libodbc1:amd64\nPin: origin \"packages.microsoft.com\"\nPin-Priority: 100\n" >> /etc/apt/preferences.d/microsoft \
+    && echo "Package: odbcinst\nPin: origin \"packages.microsoft.com\"\nPin-Priority: 100\n" >> /etc/apt/preferences.d/microsoft \
+    && echo "Package: odbcinst1debian2:amd64\nPin: origin \"packages.microsoft.com\"\nPin-Priority: 100\n" >> /etc/apt/preferences.d/microsoft \
     && apt-get update \
-    && apt-get install -y msodbcsql17 mssql-tools unixodbc-dev \
+    && apt-get install -y msodbcsql18 mssql-tools18 unixodbc-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Retrieve the script used to install PHP extensions from the source container.
@@ -27,7 +34,7 @@ RUN curl -o /usr/local/bin/composer https://getcomposer.org/composer-stable.phar
     && chmod +x /usr/local/bin/composer
 
 # Downloading and installing nodejs as well as the yarn package manager.
-RUN curl -sL https://deb.nodesource.com/setup_12.x | bash - \
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/* \
     && npm install -g yarn
